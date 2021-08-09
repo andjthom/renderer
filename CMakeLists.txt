@@ -4,7 +4,6 @@ project(renderer LANGUAGES C)
 set(SOURCE_FILES
 	src/main.c
 	src/render.c
-	src/obj.c
 	src/platforms/win32.c
 )
 
@@ -12,8 +11,6 @@ set(HEADER_FILES
 	src/render.h
 	src/platform.h
 	src/linear.h
-	src/stretchy.h
-	src/obj.h
 )
 
 set(TARGET renderer)
