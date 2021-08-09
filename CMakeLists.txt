@@ -24,4 +24,8 @@ set_target_properties(${TARGET} PROPERTIES C_EXTENSIONS OFF)
 
 target_compile_options(${TARGET} PRIVATE /W4 /D_CRT_SECURE_NO_WARNINGS)
 
+add_custom_command(TARGET ${TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} -E
+	copy_directory "${CMAKE_SOURCE_DIR}/data" "$<TARGET_FILE_DIR:${TARGET}>/data"
+)
+
 set_directory_properties(PROPERTIES VS_STARTUP_PROJECT ${TARGET})
