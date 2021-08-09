@@ -1,12 +1,19 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <math.h>
 #include "render.h"
 
-static void ConvertColor(Vec4f color, unsigned char out[4])
+static void __ConvertColor(const Vec4f color, unsigned char out[4])
 {
 	for (int i = 0; i < 4; i++) {
 		out[i] = (unsigned char)(color[i] * 255);
 	}
+}
+
+static void __ConvertPoint(const R_Surface *surface, const Vec2f point, int *x, int *y)
+{
+	*x = (int)((point[0] + 1.0) * surface->width / 2.0);
+	*y = (int)((point[1] + 1.0) * surface->height / 2.0);
 }
 
 R_Surface *R_CreateSurface(const int width, const int height, const int channels)
@@ -24,7 +31,7 @@ R_Surface *R_CreateSurface(const int width, const int height, const int channels
 	return surface;
 }
 
-void R_DestroySurface(const R_Surface *surface)
+void R_DestroySurface(R_Surface *surface)
 {
 	free(surface->buffer);
 	free(surface);
@@ -56,7 +63,7 @@ void R_BlitBGR(const R_Surface *const src, const R_Surface *dest)
 void R_FillSurface(const R_Surface *surface, const Vec4f color_vec)
 {
 	unsigned char color[4];
-	ConvertColor(color_vec, color);
+	__ConvertColor(color_vec, color);
 
 	for (int y = 0; y < surface->height; y++) {
 		for (int x = 0; x < surface->width; x++) {
@@ -67,6 +74,62 @@ void R_FillSurface(const R_Surface *surface, const Vec4f color_vec)
 			pixel[1] = color[1];
 			pixel[2] = color[2];
 			pixel[3] = color[3];
+		}
+	}
+}
+
+static void __DrawPoint(const R_Surface *surface, const unsigned char color[4],
+						const int x, const int y)
+{
+	int index = (y * surface->width + x) * 4;
+	for (int i = 0; i < 4; i++) {
+		surface->buffer[index + i] = color[i];
+	}
+}
+
+void R_DrawPoint(const R_Surface *surface, const Vec4f color_vec, const Vec2f point)
+{
+	unsigned char color[4];
+	int x, y;
+
+	__ConvertColor(color_vec, color);
+	__ConvertPoint(surface, point, &x, &y);
+
+	__DrawPoint(surface, color, x, y);
+}
+
+void R_DrawLine(const R_Surface *surface, const Vec4f color_vec, const Vec2f p0, const Vec2f p1)
+{
+	unsigned char color[4];
+	int x0, y0, x1, y1;
+
+	__ConvertColor(color_vec, color);
+	__ConvertPoint(surface, p0, &x0, &y0);
+	__ConvertPoint(surface, p1, &x1, &y1);
+
+	int dx = abs(x1 - x0);
+	int x_dir = (x0 < x1) ? 1 : -1;
+	int dy = -abs(y1 - y0);
+	int y_dir = (y0 < y1) ? 1 : -1;
+	int error = dx + dy;
+
+	while (1) {
+		__DrawPoint(surface, color, x0, y0);
+
+		if (x0 == x1 && y0 == y1) {
+			break;
+		}
+
+		int dbl_error = 2 * error;
+
+		if (dbl_error >= dy) {
+			error += dy;
+			x0 += x_dir;
+		}
+
+		if (dbl_error <= dx) {
+			error += dx;
+			y0 += y_dir;
 		}
 	}
 }

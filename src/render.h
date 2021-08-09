@@ -11,9 +11,11 @@ typedef struct {
 } R_Surface;
 
 R_Surface *R_CreateSurface(const int width, const int height, const int channels);
-void R_DestroySurface(const R_Surface *surface);
+void R_DestroySurface(R_Surface *surface);
 
 void R_BlitBGR(const R_Surface *src, const R_Surface *dest);
 void R_FillSurface(const R_Surface *surface, const Vec4f color);
+void R_DrawPoint(const R_Surface *surface, const Vec4f color_vec, const Vec2f point);
+void R_DrawLine(const R_Surface *surface, const Vec4f color_vec, const Vec2f p0, const Vec2f p1);
 
 #endif /* !RENDER_H */
