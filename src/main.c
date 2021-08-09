@@ -1,5 +1,7 @@
+#include <assert.h>
 #include "platform.h"
 #include "render.h"
+#include "obj.h"
 
 int main()
 {
@@ -12,10 +14,19 @@ int main()
 	R_FillSurface(surface, background_color);
 
 	Vec4f line_color = {1.0f, 1.0f, 1.0f, 1.0f};
-	Vec2f p0 = {0.0f, 0.0f};
-	Vec2f p1 = {0.3f, 0.9f};
+	OBJ_Mesh *mesh = OBJ_CreateMesh("data/african_head.obj");
+	assert(mesh->indices != NULL);
 
-	R_DrawLine(surface, line_color, p0, p1);
+	for (int i = 0; i < mesh->num_faces; i++) {
+		Vec3u *face = &mesh->indices[i * 3];
+		for (int j = 0; j < 3; j++) {
+			int v0 = face[j][0];
+			int v1 = face[(j+1)%3][0];
+			Vec2f p0 = {mesh->positions[v0][0], mesh->positions[v0][1]};
+			Vec2f p1 = {mesh->positions[v1][0], mesh->positions[v1][1]};
+			R_DrawLine(surface, line_color, p0, p1);
+		}
+	}
 
 	while (!P_WindowShouldClose(window)) {
 		P_PollEvents();
