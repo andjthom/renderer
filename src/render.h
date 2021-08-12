@@ -15,7 +15,9 @@ void R_DestroySurface(R_Surface *surface);
 
 void R_BlitBGR(const R_Surface *src, const R_Surface *dest);
 void R_FillSurface(const R_Surface *surface, const Vec4f color);
-void R_DrawPoint(const R_Surface *surface, const Vec4f color_vec, const Vec2f point);
-void R_DrawLine(const R_Surface *surface, const Vec4f color_vec, const Vec2f p0, const Vec2f p1);
+void R_DrawPoint(const R_Surface *surface, const Vec4f color, const Vec2f point);
+void R_DrawLine(const R_Surface *surface, const Vec4f color, const Vec2f pts[2]);
+void R_DrawTriangle(const R_Surface *surface, const Vec4f color, const Vec2f pts[3]);
+void R_RasterizeTriangle(const R_Surface *surface, const Vec4f color, const Vec2f pts[3]);
 
 #endif /* !RENDER_H */

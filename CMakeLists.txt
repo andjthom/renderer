@@ -5,6 +5,7 @@ set(SOURCE_FILES
 	src/main.c
 	src/render.c
 	src/obj.c
+	src/linear.c
 	src/platforms/win32.c
 )
 
