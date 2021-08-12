@@ -40,7 +40,34 @@ void R_DestroySurface(R_Surface *surface)
 	free(surface);
 }
 
-void R_BlitBGR(const R_Surface *const src, const R_Surface *dest)
+R_Framebuffer *R_CreateFramebuffer(const int width, const int height)
+{
+	R_Framebuffer *result = malloc(sizeof(R_Framebuffer));
+	assert(result != NULL);
+
+	int color_size = width * height * 4 * sizeof(unsigned char);
+	int depth_size = width * height * sizeof(float);
+	result->width = width;
+	result->height = height;
+	result->color_buffer = malloc(color_size);
+	result->depth_buffer = malloc(depth_size);
+	assert(result->color_buffer != NULL && result->depth_buffer != NULL);
+
+	Vec4f color = {0.0f, 0.0f, 0.0f, 1.0f};
+	R_FramebufferClearColor(result, color);
+	R_FramebufferClearDepth(result, 1.0f);
+
+	return result;
+}
+
+void R_DestroyFramebuffer(R_Framebuffer *framebuffer)
+{
+	free(framebuffer->color_buffer);
+	free(framebuffer->depth_buffer);
+	free(framebuffer);
+}
+
+void R_BlitBGR(const R_Framebuffer *const src, const R_Surface *dest)
 {
 	assert(src->width >= dest->width && src->height >= dest->height);
 
@@ -52,7 +79,7 @@ void R_BlitBGR(const R_Surface *const src, const R_Surface *dest)
 			int flipped_y = height - y - 1;
 			int src_index = (y * width + x) * 4;
 			int dest_index = (flipped_y * width + x) * 4;
-			unsigned char *src_pixel = &src->buffer[src_index];
+			unsigned char *src_pixel = &src->color_buffer[src_index];
 			unsigned char *dest_pixel = &dest->buffer[dest_index];
 
 			dest_pixel[0] = src_pixel[2];
@@ -63,15 +90,15 @@ void R_BlitBGR(const R_Surface *const src, const R_Surface *dest)
 	}
 }
 
-void R_FillSurface(const R_Surface *surface, const Vec4f color_vec)
+void R_FramebufferClearColor(const R_Framebuffer *framebuffer, const Vec4f color_vec)
 {
 	unsigned char color[4];
 	ConvertColor(color_vec, color);
 
-	for (int y = 0; y < surface->height; y++) {
-		for (int x = 0; x < surface->width; x++) {
-			int index = (y * surface->width + x) * 4;
-			unsigned char *pixel = &surface->buffer[index];
+	for (int y = 0; y < framebuffer->height; y++) {
+		for (int x = 0; x < framebuffer->width; x++) {
+			int index = (y * framebuffer->width + x) * 4;
+			unsigned char *pixel = &framebuffer->color_buffer[index];
 
 			for (int i = 0; i < 4; i++) {
 				pixel[i] = color[i];
@@ -80,26 +107,38 @@ void R_FillSurface(const R_Surface *surface, const Vec4f color_vec)
 	}
 }
 
-static void DrawPoint(const R_Surface *surface, const unsigned char color[4], const Vec2i point)
+void R_FramebufferClearDepth(const R_Framebuffer *framebuffer, const float depth)
 {
-	int index = (point[1] * surface->width + point[0]) * 4;
-	for (int i = 0; i < 4; i++) {
-		surface->buffer[index + i] = color[i];
+	for (int y = 0; y < framebuffer->height; y++) {
+		for (int x = 0; x < framebuffer->width; x++) {
+			int index = (y * framebuffer->width + x);
+			framebuffer->depth_buffer[index] = depth;
+		}
 	}
 }
 
-void R_DrawPoint(const R_Surface *surface, const Vec4f color_vec, const Vec2f point_f)
+static void DrawPoint(const R_Framebuffer *framebuffer, const unsigned char color[4],
+					  const Vec2i point)
+{
+	int index = (point[1] * framebuffer->width + point[0]) * 4;
+	for (int i = 0; i < 4; i++) {
+		framebuffer->color_buffer[index + i] = color[i];
+	}
+}
+
+void R_DrawPoint(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f point_f)
 {
 	unsigned char color[4];
 	Vec2i point = {0, 0};
 
 	ConvertColor(color_vec, color);
-	ConvertPoint(surface->width, surface->height, point_f, point);
+	ConvertPoint(framebuffer->width, framebuffer->height, point_f, point);
 
-	DrawPoint(surface, color, point);
+	DrawPoint(framebuffer, color, point);
 }
 
-static void DrawLine(const R_Surface *surface, const unsigned char color[4], const Vec2i pts[2])
+static void DrawLine(const R_Framebuffer *framebuffer, const unsigned char color[4],
+					 const Vec2i pts[2])
 {
 	Vec2i p0 = {pts[0][0], pts[0][1]};
 	Vec2i p1 = {pts[1][0], pts[1][1]};
@@ -111,7 +150,7 @@ static void DrawLine(const R_Surface *surface, const unsigned char color[4], con
 	int error = dx + dy;
 
 	while (1) {
-		DrawPoint(surface, color, p0);
+		DrawPoint(framebuffer, color, p0);
 
 		if (p0[0] == p1[0] && p0[1] == p1[1]) {
 			break;
@@ -131,19 +170,20 @@ static void DrawLine(const R_Surface *surface, const unsigned char color[4], con
 	}
 }
 
-void R_DrawLine(const R_Surface *surface, const Vec4f color_vec, const Vec2f pts_f[2])
+void R_DrawLine(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f pts_f[2])
 {
 	unsigned char color[4];
 	Vec2i points[2] = {{0, 0}, {0, 0}};
 
 	ConvertColor(color_vec, color);
-	ConvertPoint(surface->width, surface->height, pts_f[0], points[0]);
-	ConvertPoint(surface->width, surface->height, pts_f[1], points[1]);
+	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[0], points[0]);
+	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[1], points[1]);
 
-	DrawLine(surface, color, points);
+	DrawLine(framebuffer, color, points);
 }
 
-static void DrawTriangle(const R_Surface *surface, const unsigned char color[4], const Vec2i pts[3])
+static void DrawTriangle(const R_Framebuffer *framebuffer, const unsigned char color[4],
+						 const Vec2i pts[3])
 {
 	Vec2i abc[3][2];
 	for (int i = 0; i < 3; i++) {
@@ -153,22 +193,22 @@ static void DrawTriangle(const R_Surface *surface, const unsigned char color[4],
 		abc[i][1][1] = pts[(i+1)%3][1];
 	}
 
-	DrawLine(surface, color, abc[0]);
-	DrawLine(surface, color, abc[1]);
-	DrawLine(surface, color, abc[2]);
+	DrawLine(framebuffer, color, abc[0]);
+	DrawLine(framebuffer, color, abc[1]);
+	DrawLine(framebuffer, color, abc[2]);
 }
 
-void R_DrawTriangle(const R_Surface *surface, const Vec4f color_vec, const Vec2f pts_f[3])
+void R_DrawTriangle(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f pts_f[3])
 {
 	unsigned char color[4];
 	Vec2i points[3] = {{0, 0}, {0, 0}, {0, 0}};
 
 	ConvertColor(color_vec, color);
-	ConvertPoint(surface->width, surface->height, pts_f[0], points[0]);
-	ConvertPoint(surface->width, surface->height, pts_f[1], points[1]);
-	ConvertPoint(surface->width, surface->height, pts_f[2], points[2]);
+	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[0], points[0]);
+	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[1], points[1]);
+	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[2], points[2]);
 
-	DrawTriangle(surface, color, points);
+	DrawTriangle(framebuffer, color, points);
 }
 
 static void GetBBox(const int width, const int height, const Vec2i pts[3],
@@ -205,12 +245,13 @@ static void Barycentric(const Vec2i abc[3], const Vec2i p, Vec3f result)
 	result[0] = 1.0f - result[1] - result[2];
 }
 
-void R_RasterizeTriangle(const R_Surface *surface, const Vec4f color_vec, const Vec2f pts_f[3])
+void R_RasterizeTriangle(const R_Framebuffer *framebuffer, const Vec4f color_vec,
+						 const Vec2f pts_f[3])
 {
 	unsigned char color[4];
 	Vec2i points[3];
-	int width = surface->width;
-	int height = surface->height;
+	int width = framebuffer->width;
+	int height = framebuffer->height;
 
 	ConvertColor(color_vec, color);	
 	ConvertPoint(width, height, pts_f[0], points[0]);
@@ -226,7 +267,7 @@ void R_RasterizeTriangle(const R_Surface *surface, const Vec4f color_vec, const 
 		for (p[0] = bbox_min[0]; p[0] <= bbox_max[0]; p[0]++) {
 			Barycentric(points, p, bary);
 			if (bary[0] >= 0 && bary[1] >= 0 && bary[2] >= 0) {
-				DrawPoint(surface, color, p);
+				DrawPoint(framebuffer, color, p);
 			}
 		}
 	}

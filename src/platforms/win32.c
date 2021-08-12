@@ -139,9 +139,9 @@ void P_PollEvents()
 	}
 }
 
-void P_PresentSurface(const P_Window *window, const R_Surface *surface)
+void P_SwapWindow(const P_Window *window, const R_Framebuffer *framebuffer)
 {
-	R_BlitBGR(surface, window->surface);
+	R_BlitBGR(framebuffer, window->surface);
 
 	HDC windc = GetDC(window->handle);
 	int width = window->surface->width;
@@ -155,8 +155,8 @@ int P_WindowShouldClose(const P_Window *window)
 	return window->quit;
 }
 
-R_Surface *P_CreateCompatibleSurface(const P_Window *window)
+R_Framebuffer *P_CreateCompatibleFramebuffer(const P_Window *window)
 {
 	R_Surface *surface = window->surface;
-	return R_CreateSurface(surface->width, surface->height, surface->channels);
+	return R_CreateFramebuffer(surface->width, surface->height);
 }
