@@ -117,7 +117,7 @@ void R_FramebufferClearDepth(const R_Framebuffer *framebuffer, const float depth
 	}
 }
 
-static void DrawPoint(const R_Framebuffer *framebuffer, const unsigned char color[4],
+static void DrawPoint2D(const R_Framebuffer *framebuffer, const unsigned char color[4],
 					  const Vec2i point)
 {
 	int index = (point[1] * framebuffer->width + point[0]) * 4;
@@ -126,7 +126,7 @@ static void DrawPoint(const R_Framebuffer *framebuffer, const unsigned char colo
 	}
 }
 
-void R_DrawPoint(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f point_f)
+void R_DrawPoint2D(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f point_f)
 {
 	unsigned char color[4];
 	Vec2i point = {0, 0};
@@ -134,10 +134,10 @@ void R_DrawPoint(const R_Framebuffer *framebuffer, const Vec4f color_vec, const 
 	ConvertColor(color_vec, color);
 	ConvertPoint(framebuffer->width, framebuffer->height, point_f, point);
 
-	DrawPoint(framebuffer, color, point);
+	DrawPoint2D(framebuffer, color, point);
 }
 
-static void DrawLine(const R_Framebuffer *framebuffer, const unsigned char color[4],
+static void DrawLine2D(const R_Framebuffer *framebuffer, const unsigned char color[4],
 					 const Vec2i pts[2])
 {
 	Vec2i p0 = {pts[0][0], pts[0][1]};
@@ -150,7 +150,7 @@ static void DrawLine(const R_Framebuffer *framebuffer, const unsigned char color
 	int error = dx + dy;
 
 	while (1) {
-		DrawPoint(framebuffer, color, p0);
+		DrawPoint2D(framebuffer, color, p0);
 
 		if (p0[0] == p1[0] && p0[1] == p1[1]) {
 			break;
@@ -170,7 +170,7 @@ static void DrawLine(const R_Framebuffer *framebuffer, const unsigned char color
 	}
 }
 
-void R_DrawLine(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f pts_f[2])
+void R_DrawLine2D(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f pts_f[2])
 {
 	unsigned char color[4];
 	Vec2i points[2] = {{0, 0}, {0, 0}};
@@ -179,10 +179,10 @@ void R_DrawLine(const R_Framebuffer *framebuffer, const Vec4f color_vec, const V
 	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[0], points[0]);
 	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[1], points[1]);
 
-	DrawLine(framebuffer, color, points);
+	DrawLine2D(framebuffer, color, points);
 }
 
-static void DrawTriangle(const R_Framebuffer *framebuffer, const unsigned char color[4],
+static void DrawTriangle2D(const R_Framebuffer *framebuffer, const unsigned char color[4],
 						 const Vec2i pts[3])
 {
 	Vec2i abc[3][2];
@@ -193,12 +193,12 @@ static void DrawTriangle(const R_Framebuffer *framebuffer, const unsigned char c
 		abc[i][1][1] = pts[(i+1)%3][1];
 	}
 
-	DrawLine(framebuffer, color, abc[0]);
-	DrawLine(framebuffer, color, abc[1]);
-	DrawLine(framebuffer, color, abc[2]);
+	DrawLine2D(framebuffer, color, abc[0]);
+	DrawLine2D(framebuffer, color, abc[1]);
+	DrawLine2D(framebuffer, color, abc[2]);
 }
 
-void R_DrawTriangle(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f pts_f[3])
+void R_DrawTriangle2D(const R_Framebuffer *framebuffer, const Vec4f color_vec, const Vec2f pts_f[3])
 {
 	unsigned char color[4];
 	Vec2i points[3] = {{0, 0}, {0, 0}, {0, 0}};
@@ -208,7 +208,7 @@ void R_DrawTriangle(const R_Framebuffer *framebuffer, const Vec4f color_vec, con
 	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[1], points[1]);
 	ConvertPoint(framebuffer->width, framebuffer->height, pts_f[2], points[2]);
 
-	DrawTriangle(framebuffer, color, points);
+	DrawTriangle2D(framebuffer, color, points);
 }
 
 static void GetBBox(const int width, const int height, const Vec2i pts[3],
@@ -245,29 +245,22 @@ static void Barycentric(const Vec2i abc[3], const Vec2i p, Vec3f result)
 	result[0] = 1.0f - result[1] - result[2];
 }
 
-void R_RasterizeTriangle(const R_Framebuffer *framebuffer, const Vec4f color_vec,
-						 const Vec2f pts_f[3])
+void R_RasterizeTriangle(const R_Framebuffer *framebuffer, const unsigned char color[4],
+						 const Vec2i pts[3])
 {
-	unsigned char color[4];
-	Vec2i points[3];
 	int width = framebuffer->width;
 	int height = framebuffer->height;
 
-	ConvertColor(color_vec, color);	
-	ConvertPoint(width, height, pts_f[0], points[0]);
-	ConvertPoint(width, height, pts_f[1], points[1]);
-	ConvertPoint(width, height, pts_f[2], points[2]);
-
 	Vec2i bbox_min, bbox_max;
-	GetBBox(width, height, points, bbox_min, bbox_max);
+	GetBBox(width, height, pts, bbox_min, bbox_max);
 
 	Vec2i p;
 	Vec3f bary;
 	for (p[1] = bbox_min[1]; p[1] <= bbox_max[1]; p[1]++) {
 		for (p[0] = bbox_min[0]; p[0] <= bbox_max[0]; p[0]++) {
-			Barycentric(points, p, bary);
-			if (bary[0] >= 0 && bary[1] >= 0 && bary[2] >= 0) {
-				DrawPoint(framebuffer, color, p);
+			Barycentric(pts, p, bary);
+			if (bary[0] >= -EPSILON && bary[1] >= -EPSILON && bary[2] >= -EPSILON) {
+				DrawPoint2D(framebuffer, color, p);
 			}
 		}
 	}

@@ -15,6 +15,11 @@ void Vec2i_Max(const Vec2i a, const Vec2i b, Vec2i result);
 void Vec2i_Sub(const Vec2i a, const Vec2i b, Vec2i result);
 int Vec2i_Dot(const Vec2i a, const Vec2i b);
 
+void Vec3f_Sub(const Vec3f a, const Vec3f b, Vec3f result);
+float Vec3f_Dot(const Vec3f a, const Vec3f b);
 void Vec3f_Cross(const Vec3f a, const Vec3f b, Vec3f result);
+float Vec3f_Length(const Vec3f a);
+void Vec3f_Scale(const Vec3f a, const float f, Vec3f result);
+void Vec3f_Normalize(const Vec3f a, Vec3f result);
 
 #endif /* !LINEAR_H */

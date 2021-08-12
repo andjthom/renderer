@@ -1,30 +1,50 @@
 #include <assert.h>
+#include <time.h>
+#include <stdlib.h>
 #include "platform.h"
 #include "render.h"
 #include "obj.h"
 
-void TriangleTest(const R_Framebuffer *framebuffer)
+void ModelTest(const R_Framebuffer *framebuffer)
 {
-	Vec4f red = {1.0f, 0.0f, 0.0f, 1.0f};
-	Vec4f white = {1.0f, 1.0f, 1.0f, 1.0f};
-	Vec4f green = {0.0f, 1.0f, 0.0f, 1.0f};
-	Vec4f black = {0.0f, 0.0f, 0.0f, 1.0f};
+	OBJ_Mesh *mesh = OBJ_CreateMesh("data/african_head.obj");
 
-	Vec2f t0[3] = {{-0.9f, -0.3f}, {-0.5f, 0.6f}, {-0.3f, -0.2f}};
-	Vec2f t1[3] = {{0.8f, -0.5f}, {0.5f, -0.99f}, {-0.3f, 0.8f}};
-	Vec2f t2[3] = {{0.8f, 0.5f}, {0.2f, 0.6f}, {0.3f, 0.8f}};
+	int width = framebuffer->width;
+	int height = framebuffer->height;
+	Vec3f world_coords[3];
+	Vec2i screen_coords[3];
+	unsigned char color[4];
+	Vec3f light_dir = {0.0f, 0.0f, -1.0f};
+	for (int i = 0; i < mesh->num_faces; i++) {
+		Vec3u *face = &mesh->indices[i*3];
 
-	R_RasterizeTriangle(framebuffer, red, t0);
-	R_RasterizeTriangle(framebuffer, white, t1);
-	R_RasterizeTriangle(framebuffer, green, t2);
+		for (int j = 0; j < 3; j++) {
+			world_coords[j][0] = mesh->positions[face[j][0]][0];
+			world_coords[j][1] = mesh->positions[face[j][0]][1];
+			world_coords[j][2] = mesh->positions[face[j][0]][2];
+			screen_coords[j][0] = (int)((world_coords[j][0] + 1.0) * width / 2.0);
+			screen_coords[j][1] = (int)((world_coords[j][1] + 1.0) * height / 2.0);
+		}
 
-	R_DrawTriangle(framebuffer, black, t0);
-	R_DrawTriangle(framebuffer, black, t1);
-	R_DrawTriangle(framebuffer, black, t2);
+		Vec3f a, b, normal;
+		Vec3f_Sub(world_coords[2], world_coords[0], a);
+		Vec3f_Sub(world_coords[1], world_coords[0], b);
+		Vec3f_Cross(a, b, normal);
+		Vec3f_Normalize(normal, normal);
+		float intensity = Vec3f_Dot(normal, light_dir);
+		if (intensity > 0) {
+			for (int j = 0; j < 3; j++) {
+				color[j] = 255 * intensity;
+			}
+
+			R_RasterizeTriangle(framebuffer, color, screen_coords);
+		}
+	}
 }
 
 int main()
 {
+	srand((unsigned int)time(NULL));
 	P_Init();
 
 	P_Window *window = P_CreateWindow("Renderer", 640, 640);
@@ -33,7 +53,7 @@ int main()
 	Vec4f background_color = {0.7f, 0.7f, 1.0f, 1.0f};
 	R_FramebufferClearColor(framebuffer, background_color);
 
-	TriangleTest(framebuffer);
+	ModelTest(framebuffer);
 
 	while (!P_WindowShouldClose(window)) {
 		P_PollEvents();
